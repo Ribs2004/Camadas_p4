@@ -1,60 +1,16 @@
 from enlace import *
 import time
 import numpy as np
+from protocolo import Datagrama
 
 serialName = "COM6"
-
-class datagrama(object):
-    def __init__(self, b):
-        self.txBuffer = b
-        self.i = 1
-        self.j = 1
-        self.number = 16
-        self.t = False
-    
-    def body(self):
-            string_50 = b''
-            first_50 = self.txBuffer[0:50]
-            self.txBuffer = self.txBuffer[50:]
-            string_50 += first_50
-            return string_50
-    
-    def head(self):
-            head = b''
-            i_binary = self.i.to_bytes(1, 'little')
-            head += i_binary
-            next_10 = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-            head += next_10
-            if len(self.txBuffer) >= 50:
-                head += self.number.to_bytes(1, 'little')
-                #self.txBuffer = self.txBuffer[50:]
-            else:
-                head += len(self.txBuffer).to_bytes(1, 'little')
-            return head
-
-    def eop(self):
-            eop = b'\xff\xff\xff'
-            return eop
-    
-    def pacote(self):
-            pack = b''
-            bodyzada = self.body()
-            headzada = self.head()
-            eopzada = self.eop()
-            pack += headzada + bodyzada + eopzada
-            return pack
-    
-    def handshake(self):
-        handshake = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF'
-        print('Entrou na função Handshake')
-        return handshake
-         
 
 def main():
     try:
         print("Iniciou o main")
         # declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
-        # para declarar esse objeto é o nome da porta.
+        # para declarar esse objeto é o nome da porta
+
         com1 = enlace(serialName)
 
         # Ativa comunicacao. Inicia os threads e a comunicação seiral
@@ -66,42 +22,90 @@ def main():
         # Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
         print("Abriu a comunicação")
 
-
         with open('KFC_11zon.jpg', 'rb') as image:
             f = image.read()
             b = bytearray(f)
 
+        protocolo = Datagrama(b)
+        protocolo.payload = protocolo.payloads()
 
-        protocolo = datagrama(b)
-
-        esperando_contato = True
-        while esperando_contato is True:
-            com1.sendData(protocolo.handshake())
+        inicia = False
+        while inicia is False:
+            pack = protocolo.pacote(1)
+            com1.sendData(pack)
+            time.sleep(5)
             bufferLen = com1.rx.getBufferLen()
-            rxBuffer, nRx = com1.getData(bufferLen)
-            time.sleep(2)
+            protocolo.rxBuffer, nRx = com1.getData(bufferLen)
             com1.rx.clearBuffer()
-            if rxBuffer == b'\xCC':
-                protocolo.t = True
-                esperando_contato = False
+            if protocolo.rxBuffer[0] == b'\x02':
+                inicia = True
+
+
+        while inicia is True:
+
+            if protocolo.i <= protocolo.payload:
+                print('SUCESSO!')
+                com1.disable()
+            else:
+                pack = protocolo.pacote(3)
+                com1.sendData(pack)
+                timer1 = protocolo.activate_timer()
+                timer2 = protocolo.activate_timer()
+
+            bufferLen = com1.rx.getBufferLen()
+            protocolo.rxBuffer, nRx = com1.getData(bufferLen)
+            time.sleep(.05)
+            com1.rx.clearBuffer()
+
+            if protocolo.rxBuffer[0] == b'\x04':
+                protocolo.i += 1
+            else:
+                if protocolo.elapsed_time(timer1) > 5:
+                    pack = protocolo.pacote(3)
+                    com1.sendData(pack)
+                    timer1 = protocolo.activate_timer()
+                
+                if protocolo.elapsed_time(timer2) > 20:
+                    pack = protocolo.pacote(5)
+                    com1.sendData(pack)
+                    com1.disable()
+                    print(':-(')
+                else:
+                    bufferLen = com1.rx.getBufferLen()
+                    protocolo.rxBuffer, nRx = com1.getData(bufferLen)
+                    time.sleep(.05)
+                    com1.rx.clearBuffer()
+
+                    #if protocolo.rxBuffer[0] == b'\x06':
+
+        
+                    
+
+                    
+                
+
+            
+
+            
+
             
         
         first_time = True
         while protocolo.t is True:
             bufferLen = com1.rx.getBufferLen()
-            rxBuffer, nRx = com1.getData(bufferLen)
+            protocolo.rxBuffer, nRx = com1.getData(bufferLen)
             com1.rx.clearBuffer()
             time.sleep(.5)
-            print(f'rxBuffer: {rxBuffer}')
-            if len(protocolo.txBuffer) >= 0 and (rxBuffer == b'\xAA' or first_time is True):
+            print(f'protocolo.rxBuffer: {protocolo.rxBuffer}')
+            if len(protocolo.txBuffer) >= 0 and (protocolo.rxBuffer == b'\xAA' or first_time is True):
                 first_time = False
-                rxBuffer = 0
+                protocolo.rxBuffer = 0
                 pack = protocolo.pacote()
                 com1.sendData(np.asanyarray(pack))
                 time.sleep(.5)
                 protocolo.i += 1
                 protocolo.j += 1
-            elif rxBuffer == b'\xBB':
+            elif protocolo.rxBuffer == b'\xBB':
                  print('Comunicação mal sucedida!')
                  protocolo.t = False
             elif len(protocolo.txBuffer) == 0:
@@ -127,7 +131,7 @@ def main():
         # O método não deve estar funcionando quando usado como abaixo. deve estar retornando zero. Tente entender como esse método funciona e faça-o funcionar.
         while com1.tx.transLen == 0:
             pass
-        #txSize = com1.tx.getStatus()
+        #txSize = protocolo.com1.tx.getStatus()
         #print('enviou = {} comandos' .format(enviados))
 
         print('estou esperando')
@@ -137,9 +141,9 @@ def main():
             print('Time out! Comunicação encerrada!')
             com1.disable()
 
-        rxBuffer, nRx = com1.getData(1)
+        protocolo.rxBuffer, nRx = com1.getData(1)
 
-        rxNumero = int.from_bytes(rxBuffer, "little")
+        rxNumero = int.from_bytes(protocolo.rxBuffer, "little")
         print('Pronto, recebi de volta {}'.format(rxNumero))
 
         #if enviados == rxNumero:
