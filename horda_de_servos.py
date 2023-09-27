@@ -13,15 +13,19 @@ class Servidor(object):
 
     
     def head(self, tipo):
-        head = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  
+        head = b''  
         if tipo == 2:
-            head[0] = b'\x02'
+            head += b'\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         if tipo == 4:
-            head[0] = b'\x04'
-            head[7] = self.i.to_bytes(1, 'little')
+            head += b'\x04\x00\x00\x00\x00\x00'
+            head += self.i.to_bytes(1, 'little')
+            head += b'\x00\x00\x00'
+        if tipo == 5:
+            head += b'\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         if tipo == 6:
-            head[0] = b'\x06'
-            head[6] = self.i.to_bytes(1, 'little')       
+            head += b'\x05\x00\x00\x00\x00'
+            head += self.i.to_bytes(1, 'little')   
+            head += b'\x00\x00\x00\x00'    
         return head
 
     def eop(self):
