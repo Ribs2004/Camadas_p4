@@ -26,38 +26,45 @@ def main():
             f = image.read()
             b = bytearray(f)
 
+        print(f'tamanho b: {len(b)}')
         protocolo = Datagrama(b)
-        protocolo.payload = protocolo.payloads()
+        protocolo.payloads()
+        print(protocolo.payload)
+
 
         inicia = False
         while inicia is False:
             pack = protocolo.pacote(1)
             com1.sendData(pack)
+            print('Mandei o pack 1')
             time.sleep(5)
             bufferLen = com1.rx.getBufferLen()
             protocolo.rxBuffer, nRx = com1.getData(bufferLen)
             com1.rx.clearBuffer()
-            if protocolo.rxBuffer[0] == b'\x02':
+            print(f'rxBuffer: {protocolo.rxBuffer}')
+            if protocolo.rxBuffer[0] == 2:
                 inicia = True
 
 
         while inicia is True:
-
-            if protocolo.i <= protocolo.payload:
+            if protocolo.i > protocolo.payload:
                 print('SUCESSO!')
                 com1.disable()
             else:
                 pack = protocolo.pacote(3)
                 com1.sendData(pack)
+                print(f'pack: {pack}')
                 timer1 = protocolo.activate_timer()
                 timer2 = protocolo.activate_timer()
 
+            time.sleep(2)
             bufferLen = com1.rx.getBufferLen()
             protocolo.rxBuffer, nRx = com1.getData(bufferLen)
             time.sleep(.05)
             com1.rx.clearBuffer()
+            print(f'rxbuffer 4: {protocolo.rxBuffer}')
 
-            if protocolo.rxBuffer[0] == b'\x04':
+            if protocolo.rxBuffer[0] == 4:
                 protocolo.i += 1
             else:
                 if protocolo.elapsed_time(timer1) > 5:
@@ -76,42 +83,13 @@ def main():
                     time.sleep(.05)
                     com1.rx.clearBuffer()
 
-                    #if protocolo.rxBuffer[0] == b'\x06':
-
+                if protocolo.rxBuffer[0] == b'\x06':
+                    protocolo.i = protocolo.rxBuffer[6].from_bytes(1, 'little')
+                    pack = protocolo.pacote(3)
+                    com1.sendData(pack)
+                    timer1 = protocolo.activate_timer()
+                    timer2 = protocolo.activate_timer()
         
-                    
-
-                    
-                
-
-            
-
-            
-
-            
-        
-        first_time = True
-        while protocolo.t is True:
-            bufferLen = com1.rx.getBufferLen()
-            protocolo.rxBuffer, nRx = com1.getData(bufferLen)
-            com1.rx.clearBuffer()
-            time.sleep(.5)
-            print(f'protocolo.rxBuffer: {protocolo.rxBuffer}')
-            if len(protocolo.txBuffer) >= 0 and (protocolo.rxBuffer == b'\xAA' or first_time is True):
-                first_time = False
-                protocolo.rxBuffer = 0
-                pack = protocolo.pacote()
-                com1.sendData(np.asanyarray(pack))
-                time.sleep(.5)
-                protocolo.i += 1
-                protocolo.j += 1
-            elif protocolo.rxBuffer == b'\xBB':
-                 print('Comunicação mal sucedida!')
-                 protocolo.t = False
-            elif len(protocolo.txBuffer) == 0:
-                com1.sendData(b'\xEE')
-                print('mandou a imagem completa\nComunicação Encerrada!')
-                protocolo.t = False
 
         print('Loop Finalizado')
 

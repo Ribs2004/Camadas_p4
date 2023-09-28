@@ -37,11 +37,18 @@ while server.t is True:
     server.rxBuffer, nRx = com1.getData(bufferLen)
     time.sleep(.05)
     com1.rx.clearBuffer()
-    print(server.rxBuffer)
+    #print(server.rxBuffer)
 
-    if len(server.rxBuffer) > 0:
-        if server.i <= server.rxBuffer[5]:
+    """if len(server.rxBuffer) > 0:
+        if server.i > server.rxBuffer[3]:
             print('Sucesso') 
+            server.t = False
+            break"""
+
+    if len(server.photo) == 800:
+        print('Sucesso')
+        server.t = False
+
 
     timer1 = server.activate_timer()
     timer2 = server.activate_timer()       
@@ -65,11 +72,12 @@ while server.t is True:
             pack = server.pacote(4)
             com1.sendData(pack)
             time.sleep(0.5)
-            #print(server.rxBuffer)
+            print(server.rxBuffer)
             server.i += 1
-            server.rxBuffer = server.rxBuffer[11:]
+            server.rxBuffer = server.rxBuffer[10:]
             server.rxBuffer = server.rxBuffer[:-4]
             server.photo += server.rxBuffer
+            #print(server.photo)
             print(len(server.photo))
             print('sai')
 
@@ -78,6 +86,8 @@ while server.t is True:
             com1.sendData(pack)
 
 time.sleep(2)
+print(server.photo)
+print(len(server.photo))
 with open('img_recebida.jpg', 'wb') as f:
     f.write(server.photo)
 

@@ -18,23 +18,30 @@ class Datagrama(object):
 
     def body(self):
             string_114 = b''
-            first_114 = self.txBuffer[0:114]
-            self.txBuffer = self.txBuffer[114:]
-            string_114 += first_114
+            print(f'len tx buffer: {len(self.txBuffer)}')
+            if len(self.txBuffer) < 114:
+                print('estou no 2')
+                string_114 = self.txBuffer[0:len(self.txBuffer) + 1] 
+            else:
+                first_114 = self.txBuffer[0:114]
+                self.txBuffer = self.txBuffer[114:]
+                string_114 += first_114
+
             return string_114
     
     def head(self, tipo):
-            head = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'          
+            head = b''          
             if tipo == 1:
-                head[0] = b'\x01'
-                head[1] = b'\xff'
-                head[3] = self.payload.to_bytes(1, 'little')
+                head += b'\x01\xff\x00'
+                head += self.payload.to_bytes(1, 'little')
+                head += b'\x00\x00\x00\x00\x00\x00'
             elif tipo == 3:
-                head[0] = b'\x03'
-                head[3] = self.payload.to_bytes(1, 'little')
-                head[4] = self.i.to_bytes(1, 'little')
+                head += b'\x03\x00\x00'
+                head += self.payload.to_bytes(1, 'little')
+                head += self.i.to_bytes(1, 'little')
+                head += b'\x00\x00\x00\x00\x00'
             elif tipo == 5:
-                head[0] = b'\x05'
+                head += b'\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00'
             return head
 
     def eop(self):
@@ -43,14 +50,20 @@ class Datagrama(object):
     
     def pacote(self, tipo):
             pack = b''
-            bodyzada = self.body()
+            if tipo != 1 and tipo != 5:
+                bodyzada = self.body()
             headzada = self.head(tipo)
             eopzada = self.eop()
-            pack += headzada + bodyzada + eopzada
+
+            if tipo == 1 or tipo == 5:
+                pack += headzada + eopzada
+            else:
+                pack += headzada + bodyzada + eopzada
+            print("acabou")
             return pack
     
     def handshake(self):
-        handshake = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF'
+        handshake = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff'
         print('Entrou na função Handshake')
         return handshake
     
@@ -61,4 +74,3 @@ class Datagrama(object):
         if start_time != None:
             elapsed_seconds = time.time() - start_time
             return elapsed_seconds
-        
