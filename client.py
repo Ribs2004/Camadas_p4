@@ -26,10 +26,10 @@ def main():
             f = image.read()
             b = bytearray(f)
 
-        print(f'tamanho b: {len(b)}')
+        #print(f'tamanho b: {len(b)}')
         protocolo = Datagrama(b)
         protocolo.payloads()
-        print(protocolo.payload)
+        #print(protocolo.payload)
 
 
         inicia = False
@@ -51,9 +51,9 @@ def main():
                 print('SUCESSO!')
                 com1.disable()
             else:
-                pack = protocolo.pacote(3)
-                com1.sendData(pack)
-                print(f'pack: {pack}')
+                #pack = protocolo.pacote(3)
+                #com1.sendData(pack)
+                #print(f'pack: {pack}')
                 timer1 = protocolo.activate_timer()
                 timer2 = protocolo.activate_timer()
 
@@ -64,32 +64,46 @@ def main():
             com1.rx.clearBuffer()
             print(f'rxbuffer 4: {protocolo.rxBuffer}')
 
-            if protocolo.rxBuffer[0] == 4:
-                protocolo.i += 1
+            if len(protocolo.rxBuffer) != 0:
+                print('recebi alguma coisa')
+                if protocolo.rxBuffer[0] == 4:
+                    print('recebi 4')
+                    protocolo.i += 1
+                elif protocolo.rxBuffer[0] == 5:
+                    com1.disable()
+                    break
+
             else:
+                print('entrei no else')
                 if protocolo.elapsed_time(timer1) > 5:
-                    pack = protocolo.pacote(3)
-                    com1.sendData(pack)
+                    print('pau inicial')
+                    #pack = protocolo.pacote(3)
+                    #com1.sendData(pack)
                     timer1 = protocolo.activate_timer()
                 
                 if protocolo.elapsed_time(timer2) > 20:
+                    print('pauzou')
                     pack = protocolo.pacote(5)
                     com1.sendData(pack)
                     com1.disable()
                     print(':-(')
                 else:
                     bufferLen = com1.rx.getBufferLen()
+                    print('pau 1')
                     protocolo.rxBuffer, nRx = com1.getData(bufferLen)
                     time.sleep(.05)
                     com1.rx.clearBuffer()
 
-                if protocolo.rxBuffer[0] == b'\x06':
-                    protocolo.i = protocolo.rxBuffer[6].from_bytes(1, 'little')
-                    pack = protocolo.pacote(3)
-                    com1.sendData(pack)
-                    timer1 = protocolo.activate_timer()
-                    timer2 = protocolo.activate_timer()
-        
+                print('rolassa')
+                if len(protocolo.rxBuffer) > 0:
+                    if protocolo.rxBuffer[0] == 6:
+                        print('pau 2')
+                        protocolo.i = protocolo.rxBuffer[6].from_bytes(1, 'little')
+                        pack = protocolo.pacote(3)
+                        com1.sendData(pack)
+                        timer1 = protocolo.activate_timer()
+                        timer2 = protocolo.activate_timer()
+            
 
         print('Loop Finalizado')
 
@@ -151,5 +165,5 @@ def main():
 
 
     # so roda o main quando for executado do terminal ... se for chamado dentro de outro modulo nao roda
-if __name__ == "__main__":
+if __name__== "__main__":
     main()
